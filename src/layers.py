@@ -1,6 +1,7 @@
 """Classes for SimGNN modules."""
 
 import torch
+from utils import scatter_
 
 class AttentionModule(torch.nn.Module):
     """
@@ -28,17 +29,22 @@ class AttentionModule(torch.nn.Module):
         """
         torch.nn.init.xavier_uniform_(self.weight_matrix)
 
-    def forward(self, embedding):
+    def forward(self, x, batch, size=None):
         """
         Making a forward propagation pass to create a graph level representation.
-        :param embedding: Result of the GCN.
-        :return representation: A graph level representation vector.
+        :param x: Result of the GNN.
+        :param size: Dimension size for scatter_
+        :param batch: Batch vector, which assigns each node to a specific example
+        :return representation: A graph level representation matrix.
         """
-        global_context = torch.mean(torch.matmul(embedding, self.weight_matrix), dim=0)
-        transformed_global = torch.tanh(global_context)
-        sigmoid_scores = torch.sigmoid(torch.mm(embedding, transformed_global.view(-1, 1)))
-        representation = torch.mm(torch.t(embedding), sigmoid_scores)
-        return representation
+        size = batch[-1].item() + 1 if size is None else size
+        mean = scatter_('mean', x, batch, dim_size=size)
+        transformed_global = torch.tanh(torch.mm(mean, self.weight_matrix))
+
+        coefs = torch.sigmoid((x * transformed_global[batch]).sum(dim=1))
+        weighted = coefs.unsqueeze(-1) * x
+
+        return scatter_('add', weighted, batch, dim_size=size)
 
 class TenorNetworkModule(torch.nn.Module):
     """
@@ -80,10 +86,11 @@ class TenorNetworkModule(torch.nn.Module):
         :param embedding_2: Result of the 2nd embedding after attention.
         :return scores: A similarity score vector.
         """
-        scoring = torch.mm(torch.t(embedding_1), self.weight_matrix.view(self.args.filters_3, -1))
-        scoring = scoring.view(self.args.filters_3, self.args.tensor_neurons)
-        scoring = torch.mm(torch.t(scoring), embedding_2)
-        combined_representation = torch.cat((embedding_1, embedding_2))
-        block_scoring = torch.mm(self.weight_matrix_block, combined_representation)
-        scores = torch.nn.functional.relu(scoring + block_scoring + self.bias)
+        batch_size = len(embedding_1)
+        scoring = torch.matmul(embedding_1, self.weight_matrix.view(self.args.filters_3, -1))
+        scoring = scoring.view(batch_size, self.args.filters_3, -1).permute([0, 2, 1])
+        scoring = torch.matmul(scoring, embedding_2.view(batch_size, self.args.filters_3, 1)).view(batch_size, -1)
+        combined_representation = torch.cat((embedding_1, embedding_2), 1)
+        block_scoring = torch.t(torch.mm(self.weight_matrix_block, torch.t(combined_representation)))
+        scores = torch.nn.functional.relu(scoring + block_scoring + self.bias.view(-1))
         return scores
