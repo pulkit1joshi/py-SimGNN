@@ -32,6 +32,7 @@ def parameter_parser():
                         default=32,
                         help="Filters (neurons) in 3rd convolution. Default is 32.")
 
+
     parser.add_argument("--tensor-neurons",
                         type=int,
                         default=16,
