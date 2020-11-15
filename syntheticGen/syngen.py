@@ -4,9 +4,11 @@ import json
 from tqdm import tqdm
 import os.path
 
-
+# Max index of graph to generate. Number og graphs generated = 1001 - index
+MAX_GRAPHS = 1001
 
 def transfomer(graph_1, graph_2, vals, index):
+
     graph_1.remove_nodes_from(nx.isolates(graph_1))
     graph_2.remove_nodes_from(nx.isolates(graph_2)) 
     edges_1 = [[edge[0], edge[1]] for edge in graph_1.edges()]
@@ -26,7 +28,6 @@ def transfomer(graph_1, graph_2, vals, index):
     data["graph_2"] = edges_2
     data["labels_1"] = [str(graph_1.degree(node)) for node in graph_1]
     data["labels_2"] = [str(graph_2.degree(node))  for node in graph_2]
-    #data["labels_1"] = data["labels_2"][0:graph_2.number_of_nodes]
     nx.set_node_attributes(graph_1, 'Labels', 1)
     nx.set_node_attributes(graph_2, 'Labels', 2)
     print(nx.get_node_attributes(graph_1, "Labels"))
@@ -38,6 +39,7 @@ def transfomer(graph_1, graph_2, vals, index):
     print(nx.get_node_attributes(graph_1, "Labels"))
     print(nx.get_node_attributes(graph_2, "Labels"))
     max2=0
+    # Finding approximate GED
     for v in nx.optimize_graph_edit_distance(graph_1, graph_2):
         max2 = v
         break
@@ -64,26 +66,21 @@ def transfomer(graph_1, graph_2, vals, index):
 
 
 
-
+# Starting index (Used to keep the initialial dataset intact. (Overlapping the original dataset may give label errors.
 index = 51
-while index <1001:
-    #print(index)
+while index <MAX_GRAPHS:
     graph = nx.erdos_renyi_graph(int(random.uniform(5,16)),random.uniform(0.4,0.7))
-    #print(dir(graph))
-    #print(graph.adjacency)
-    #index+=1
     error=0
     nodes = graph.nodes()
     clone = nx.from_edgelist(graph.edges())
     counter = 0
+    #We want connected graphs for GED calculation
     if nx.is_connected(graph):
-        #print(dir(clone))
         vals = int(abs(random.uniform(5,35)))
         while counter < vals:
+            #Randomly add/remove edge and nodes.
             x = random.uniform(0, 1)
-            #print(counter)
             if x>0.5:
-                #print("less")
                 if len(list(clone.edges)) == 0:
                     error=1
                     break
@@ -92,22 +89,16 @@ while index <1001:
                     counter = counter + 1
                     if graph.has_edge(node_1,node_2):
                         clone.remove_edge(node_1,node_2)
-                        #print("Added something")
             else:
-                #print("greater")
-                #print(x)
                 node_1 = random.choice(clone.nodes())
                 node_2 = random.choice(clone.nodes())
                 if node_1!=node_2 and not clone.has_edge(node_1,node_2) and not graph.has_edge(node_1,node_2):
                     clone.add_edge(node_1,node_2)
                     counter = counter + 1
-                    #print("Added something")
     if error == 0:
         #try:
             isolate = nx.isolates(clone)
             print(nx.number_of_isolates(clone))
-            #clone.remove_nodes_from(nx.isolates(clone))
-            #sgraph.remove_nodes_from(nx.isolates(graph)) 
             print("Added")
             if len(clone) == 0 or len(graph) == 0:
                 continue
