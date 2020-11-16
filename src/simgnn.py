@@ -253,6 +253,9 @@ class SimGNNTrainer(object):
             prediction = self.model(data)
             scores[i] = torch.nn.functional.mse_loss(prediction, target, reduction='none').detach().numpy()
 
+        norm_ged_mean = np.mean(ground_truth)
+        base_error = np.mean([(n-norm_ged_mean)**2 for n in ground_truth])
+        print("BaseLine Error: " + str(round(base_error*1000, 5)) + ".")
         self.model_error = np.mean(scores).item()
         self.print_evaluation()
 
