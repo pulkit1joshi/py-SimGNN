@@ -13,6 +13,4 @@ Graph similarity search is among the most important graph-based applications, e.
 ## Resources
 
 Paper can be found here: [Link](https://arxiv.org/abs/1808.05689). </br>
-Tensorflow implementation from author: [Link](https://github.com/yunshengb/SimGNN)  </br>
-Another Implementation: [Link](https://github.com/benedekrozemberczki/SimGNN) </br>
 Medium article : [Link](https://medium.com/swlh/simgnn-56420a66fa37?source=post_stats_page-------------------------------------) </br>
